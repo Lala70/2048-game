@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>2048</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #faf8ef;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    min-height: 100dvh;
+    padding: max(16px, env(safe-area-inset-top))
+             max(12px, env(safe-area-inset-right))
+             max(16px, env(safe-area-inset-bottom))
+             max(12px, env(safe-area-inset-left));
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :root {
+    --board-size: min(480px, calc(100vw - 24px));
+    --gap: 12px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: var(--board-size);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: clamp(40px, 13vw, 64px);
+    font-weight: 900;
+    color: #776e65;
+    line-height: 1;
+  }
+
+  .scores {
+    display: flex;
+    gap: 8px;
+  }
+
+  .score-box {
+    background: #bbada0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+    min-width: 60px;
+  }
+
+  .score-box .label {
+    font-size: clamp(9px, 2.5vw, 11px);
+    font-weight: 700;
+    color: #eee4da;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .score-box .value {
+    font-size: clamp(15px, 5vw, 22px);
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    width: var(--board-size);
+    justify-content: flex-end;
+  }
+
+  button {
+    background: #8f7a66;
+    color: #f9f6f2;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: clamp(13px, 4vw, 16px);
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s;
+  }
+
+  button:hover  { background: #7c6a57; }
+  button:active { background: #6b5b4e; }
+
+  .board-wrap {
+    position: relative;
+    background: #bbada0;
+    border-radius: 10px;
+    padding: var(--gap);
+    width: var(--board-size);
+    aspect-ratio: 1;
+    touch-action: none;        /* prevent scroll/pinch-zoom on the board */
+    -webkit-touch-callout: none;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gap);
+    position: absolute;
+    inset: var(--gap);
+  }
+
+  .cell {
+    background: rgba(238,228,218,0.35);
+    border-radius: 6px;
+  }
+
+  .tiles {
+    position: absolute;
+    inset: var(--gap);
+  }
+
+  .tile {
+    position: absolute;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #776e65;
+    line-height: 1;
+    transition: transform 0.1s ease, left 0.1s ease, top 0.1s ease;
+    will-change: transform, left, top;
+  }
+
+  .tile.new    { animation: pop   0.18s ease forwards; }
+  .tile.merged { animation: merge 0.20s ease forwards; }
+
+  @keyframes pop {
+    0%   { transform: scale(0); }
+    80%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes merge {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  /* Colors only — font size set dynamically in JS */
+  .t2    { background: #eee4da; }
+  .t4    { background: #ede0c8; }
+  .t8    { background: #f2b179; color: #f9f6f2; }
+  .t16   { background: #f59563; color: #f9f6f2; }
+  .t32   { background: #f67c5f; color: #f9f6f2; }
+  .t64   { background: #f65e3b; color: #f9f6f2; }
+  .t128  { background: #edcf72; color: #f9f6f2; }
+  .t256  { background: #edcc61; color: #f9f6f2; }
+  .t512  { background: #edc850; color: #f9f6f2; }
+  .t1024 { background: #edc53f; color: #f9f6f2; }
+  .t2048 { background: #edc22e; color: #f9f6f2; }
+  .tsuper { background: #3c3a32; color: #f9f6f2; }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+
+  .overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .overlay.gameover { background: rgba(238,228,218,0.73); }
+  .overlay.win      { background: rgba(237,194,46,0.55); }
+
+  .overlay h2 {
+    font-size: clamp(26px, 8vw, 48px);
+    font-weight: 900;
+    color: #776e65;
+  }
+
+  .hint {
+    font-size: clamp(11px, 2.8vw, 13px);
+    color: #776e65;
+    margin-top: 10px;
+    text-align: center;
+    padding: 0 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>2048</h1>
+  <div class="scores">
+    <div class="score-box">
+      <div class="label">Score</div>
+      <div class="value" id="score">0</div>
+    </div>
+    <div class="score-box">
+      <div class="label">Best</div>
+      <div class="value" id="best">0</div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <button id="btn-new">New Game</button>
+</div>
+
+<div class="board-wrap" id="board">
+  <div class="grid" id="grid"></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="overlay gameover" id="overlay-lose">
+    <h2>Game Over!</h2>
+    <button onclick="newGame()">Try Again</button>
+  </div>
+  <div class="overlay win" id="overlay-win">
+    <h2>You Win!</h2>
+    <button onclick="continueGame()">Keep Going</button>
+    <button onclick="newGame()">New Game</button>
+  </div>
+</div>
+
+<p class="hint">Swipe or use arrow keys &nbsp;·&nbsp; Combine tiles to reach 2048</p>
+
+<script>
+const GRID = 4;
+let board, score, best, won, keepGoing;
+
+// ── Metrics ──────────────────────────────────────────────────────────────────
+// Read actual rendered size so positions are always correct regardless of
+// viewport width or orientation.
+function getBoardMetrics() {
+  const tilesEl = document.getElementById('tiles');
+  const W = tilesEl.offsetWidth;   // square: width === height
+  const gap = parseFloat(getComputedStyle(document.documentElement)
+                .getPropertyValue('--gap')) || 12;
+  const cellSize = (W - gap * 3) / 4;
+  return { gap, cellSize };
+}
+
+function cellPos(r, c) {
+  const { gap, cellSize } = getBoardMetrics();
+  return {
+    top:  r * (cellSize + gap),
+    left: c * (cellSize + gap),
+    size: cellSize
+  };
+}
+
+// Font size scales with cell size
+function tileFontSize(v, cellSize) {
+  if (v >= 1024) return Math.round(cellSize * 0.28) + 'px';
+  if (v >= 128)  return Math.round(cellSize * 0.34) + 'px';
+  return               Math.round(cellSize * 0.42) + 'px';
+}
+
+// ── Tile class ────────────────────────────────────────────────────────────────
+function tileClass(v) {
+  return v <= 2048 ? 't' + v : 'tsuper';
+}
+
+// ── Game logic ────────────────────────────────────────────────────────────────
+function newGame() {
+  board = Array.from({length: GRID}, () => Array(GRID).fill(0));
+  score = 0;
+  won = false;
+  keepGoing = false;
+  document.getElementById('overlay-lose').classList.remove('visible');
+  document.getElementById('overlay-win').classList.remove('visible');
+  updateScore();
+  addRandom();
+  addRandom();
+  render();
+}
+
+function continueGame() {
+  keepGoing = true;
+  document.getElementById('overlay-win').classList.remove('visible');
+}
+
+function addRandom() {
+  const empty = [];
+  board.forEach((row, r) => row.forEach((v, c) => { if (!v) empty.push([r, c]); }));
+  if (!empty.length) return null;
+  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  board[r][c] = Math.random() < 0.9 ? 2 : 4;
+  return [r, c];
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = score;
+  if (score > best) {
+    best = score;
+    localStorage.setItem('2048best', best);
+    document.getElementById('best').textContent = best;
+  }
+}
+
+function render(newCell) {
+  const container = document.getElementById('tiles');
+  container.innerHTML = '';
+
+  board.forEach((row, r) => {
+    row.forEach((v, c) => {
+      if (!v) return;
+      const pos = cellPos(r, c);
+      const el = document.createElement('div');
+      el.className = 'tile ' + tileClass(v);
+      el.style.top      = pos.top  + 'px';
+      el.style.left     = pos.left + 'px';
+      el.style.width    = pos.size + 'px';
+      el.style.height   = pos.size + 'px';
+      el.style.fontSize = tileFontSize(v, pos.size);
+      el.textContent    = v;
+      if (newCell && newCell[0] === r && newCell[1] === c) el.classList.add('new');
+      container.appendChild(el);
+    });
+  });
+}
+
+function slide(row) {
+  const nums = row.filter(v => v);
+  const result = [];
+  let gained = 0;
+  for (let i = 0; i < nums.length; i++) {
+    if (i + 1 < nums.length && nums[i] === nums[i + 1]) {
+      const val = nums[i] * 2;
+      result.push(val);
+      gained += val;
+      i++;
+    } else {
+      result.push(nums[i]);
+    }
+  }
+  while (result.length < GRID) result.push(0);
+  return { result, gained };
+}
+
+function move(dir) {
+  const rotated = b => b[0].map((_, c) => b.map(row => row[c]));
+  const flipH   = b => b.map(row => [...row].reverse());
+
+  let b = board.map(r => [...r]);
+  if (dir === 'right') b = flipH(b);
+  if (dir === 'up')    b = rotated(b);
+  if (dir === 'down')  b = flipH(rotated(b));
+
+  let moved = false, totalGained = 0;
+  b = b.map(row => {
+    const { result, gained } = slide(row);
+    if (result.join() !== row.join()) moved = true;
+    totalGained += gained;
+    return result;
+  });
+
+  if (!moved) return;
+
+  if (dir === 'right') b = flipH(b);
+  if (dir === 'up')    b = rotated(rotated(rotated(b)));
+  if (dir === 'down')  b = rotated(flipH(b));
+
+  board = b;
+  score += totalGained;
+  updateScore();
+
+  const newCell = addRandom();
+  render(newCell);
+
+  if (!won && !keepGoing && board.some(row => row.includes(2048))) {
+    won = true;
+    document.getElementById('overlay-win').classList.add('visible');
+  } else if (!canMove()) {
+    document.getElementById('overlay-lose').classList.add('visible');
+  }
+}
+
+function canMove() {
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      if (!board[r][c]) return true;
+      if (c + 1 < GRID && board[r][c] === board[r][c + 1]) return true;
+      if (r + 1 < GRID && board[r][c] === board[r + 1][c]) return true;
+    }
+  }
+  return false;
+}
+
+// ── Background grid ───────────────────────────────────────────────────────────
+(function buildGrid() {
+  const grid = document.getElementById('grid');
+  for (let i = 0; i < GRID * GRID; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    grid.appendChild(cell);
+  }
+})();
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+  if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
+});
+
+// ── Touch / swipe ─────────────────────────────────────────────────────────────
+// touch-action:none on .board-wrap stops browser scroll/zoom.
+// We still call preventDefault on touchmove as a belt-and-suspenders measure
+// for older iOS WebKit.
+let touchStart = null;
+const boardEl = document.getElementById('board');
+
+boardEl.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+
+boardEl.addEventListener('touchmove', e => {
+  e.preventDefault();   // belt-and-suspenders: stop page scroll while swiping
+}, { passive: false });
+
+boardEl.addEventListener('touchend', e => {
+  if (!touchStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+  touchStart = null;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (Math.max(adx, ady) < 20) return;   // ignore taps
+  if (adx > ady) move(dx > 0 ? 'right' : 'left');
+  else           move(dy > 0 ? 'down'  : 'up');
+}, { passive: true });
+
+boardEl.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+
+// ── Resize: reposition tiles to match new board pixel size ────────────────────
+window.addEventListener('resize', () => { if (board) render(); });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('btn-new').addEventListener('click', newGame);
+
+best = parseInt(localStorage.getItem('2048best') || '0');
+document.getElementById('best').textContent = best;
+
+newGame();
+</script>
+</body>
+</html>
