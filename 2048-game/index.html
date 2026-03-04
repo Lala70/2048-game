@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>2048 Enhanced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+  <div class="stars" id="stars"></div>
+
+  <div class="game-wrapper">
+    <!-- Header -->
+    <header class="game-header">
+      <div class="title-block">
+        <h1 class="game-title">2048</h1>
+        <span class="game-subtitle">ENHANCED</span>
+      </div>
+      <div class="score-cluster">
+        <div class="score-box">
+          <span class="score-label">SCORE</span>
+          <span class="score-num" id="score">0</span>
+        </div>
+        <div class="score-box">
+          <span class="score-label">BEST</span>
+          <span class="score-num" id="best">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="stat-pill">
+        <span class="stat-label">MOVES</span>
+        <span class="stat-val" id="moves">0</span>
+      </div>
+      <div class="event-pill" id="event-pill">
+        <span class="event-pill-label">⚡ EVENT IN</span>
+        <span class="event-pill-num" id="event-ct">10</span>
+      </div>
+      <button class="btn-new" id="btn-new">New Game</button>
+    </div>
+
+    <!-- Board -->
+    <div class="board-wrap">
+      <div class="board" id="board">
+        <div class="grid-bg">
+          <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+          <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+          <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+          <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+        </div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <!-- Event overlay -->
+      <div class="overlay hidden" id="ov-event">
+        <div class="ov-card event-card">
+          <div class="ev-icon" id="ev-icon">⚡</div>
+          <div class="ev-title" id="ev-title">RANDOM EVENT</div>
+          <div class="ev-desc" id="ev-desc">Something wild happened!</div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div class="overlay hidden" id="ov-over">
+        <div class="ov-card">
+          <div class="over-title">GAME OVER</div>
+          <div class="over-score">Score: <strong id="over-score">0</strong></div>
+          <button class="btn-new" onclick="game.restart()">Play Again</button>
+        </div>
+      </div>
+
+      <!-- Win overlay -->
+      <div class="overlay hidden" id="ov-win">
+        <div class="ov-card win-card">
+          <div class="win-emoji">🎉</div>
+          <h2>YOU WIN!</h2>
+          <div class="over-score">Score: <strong id="win-score">0</strong></div>
+          <div class="btn-row">
+            <button class="btn-new btn-sm" onclick="game.continueGame()">Keep Going</button>
+            <button class="btn-new btn-sm" onclick="game.restart()">New Game</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="leg-item">
+        <div class="leg-tile bomb-leg">💣</div>
+        <div class="leg-desc"><strong>Bomb</strong><br>Explodes 3×3 area</div>
+      </div>
+      <div class="leg-item">
+        <div class="leg-tile x2-leg">×2</div>
+        <div class="leg-desc"><strong>Double</strong><br>2× merge score</div>
+      </div>
+      <div class="leg-item">
+        <div class="leg-tile ice-leg">❄</div>
+        <div class="leg-desc"><strong>Ice</strong><br>Frozen 3 turns</div>
+      </div>
+    </div>
+
+    <div class="hint">
+      <kbd>←↑↓→</kbd> or <kbd>WASD</kbd> to move · Swipe on mobile
+    </div>
+  </div>
+
+  <script src="effects.js"></script>
+  <script src="special-tiles.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
